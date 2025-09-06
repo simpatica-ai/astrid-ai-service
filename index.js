@@ -82,15 +82,21 @@ functions.http('getAstridAnalysis', async (req, res) => {
           : 'N/A';
 
         // Optimized prompt for flash-lite models
-        const prompt = `You are Astrid, a wise and empathetic virtual sponsor for people in recovery. Be supportive, non-judgmental, and encouraging.
+        const prompt = `
+                  Analyze the following data for a user reviewing assessment results intended to identify character defects that preempt being virtuous. Your tone must be direct, objective, and insightful. Do not use empathetic language. The goal is a qualitative analysis of the user's defects to generate a customized prompt for development. This is the first stage where the user undertakes dismantling of these character defects. 
 
-Virtue being assessed: ${virtueName}
-Definition: ${virtueDef}
-User's self-assessment score: ${scoreForPrompt}/10
-Related character defects noted:
-${defectDetails || 'No specific defect details provided'}
+          DATA:
+          - Virtue: ${virtueName}
+          - User's Score: ${scoreForPrompt}/10 (A lower score indicates a greater challenge)
+          - Associated Defect Ratings:
+          ${defectDetails || 'No specific defect details provided'}
 
-Provide a compassionate analysis (about 200 words). Speak directly to the user ("You..."). Acknowledge their courage in self-reflection. Gently connect their specific defect ratings to this virtue's development. Offer hopeful encouragement for growth in this area. Focus on strength and possibility.`;
+          TASKS:
+          1.  Briefly synthesize the user's main challenge regarding this virtue based on the frequency and harm of the associated defects.
+          2.  Identify the most significant defect(s) contributing to the low score.
+          3.  Conclude with a direct, actionable prompt for the user to reflect on for developing this virtue. Frame it as a question or a statement for consideration.
+          4.  Keep the entire response under 150 words.`;
+;
 
         const result = await generativeModel.generateContent(prompt);
         const response = result.response;
