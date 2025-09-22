@@ -53,7 +53,7 @@ functions.http('getAstridAnalysis', async (req, res) => {
           model: modelName,
           generationConfig: {
             maxOutputTokens: 1024,
-            temperature: 0.7,
+            temperature: 0.6,
             topP: 0.8,
             topK: 40
           },
@@ -87,7 +87,7 @@ functions.http('getAstridAnalysis', async (req, res) => {
 
           DATA:
           - Virtue: ${virtueName}
-          - User's Score: ${scoreForPrompt}/10 (A lower score indicates a greater challenge) A score in the lower third indicates deep challenges with this virtue, a score in the middled third indicates moderate challenges as well as capacity with this virtue, and within the upper third indicates strong capacity with this virtue and likely only minor challenges.)
+          - User's Score: ${scoreForPrompt}/10 (A lower score indicates a greater challenge) A score in the lower third indicates deep challenges with this virtue, a score in the middle third indicates moderate challenges as well as capacity with this virtue, and within the upper third indicates strong capacity with this virtue and likely only minor challenges.)
           - Associated Defect Ratings:
           ${defectDetails || 'No specific defect details provided'}
 
