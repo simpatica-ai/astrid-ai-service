@@ -85,6 +85,8 @@ functions.http('getAstridAnalysis', async (req, res) => {
         const prompt = `
                   Analyze the following data for a user reviewing assessment results intended to identify character defects that preempt being virtuous. Your tone must be direct, objective, and insightful. The goal is a qualitative analysis of the user's defects to generate a customized prompt for development. This is the first stage where the user undertakes dismantling of these character defects. Refer to the user as "you" and be empathetic but firm in your analysis.
 
+                  **SPELLING AND GRAMMAR ARE VERY IMPORTANT.  Review all responses for spelling and grammar.
+
           DATA:
           - Virtue: ${virtueName}
           - User's Score: ${scoreForPrompt}/10 (A lower score indicates a greater challenge) A score in the lower third indicates deep challenges with this virtue, a score in the middle third indicates moderate challenges as well as capacity with this virtue, and within the upper third indicates strong capacity with this virtue and likely only minor challenges.)
