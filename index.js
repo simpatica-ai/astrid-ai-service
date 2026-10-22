@@ -1,11 +1,19 @@
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
 const functions = require('@google-cloud/functions-framework');
 
-// Initialize Vertex AI outside the handler for better performance
-const vertex_ai = new VertexAI({ 
-  project: 'new-man-app', 
-  location: 'us-central1' 
-});
+// ---- Vertex endpoint configuration (edit here for a regional/BAA switch) ----
+const GCP_PROJECT = 'new-man-app';
+const GCP_LOCATION = 'global'; // global endpoint required for Gemini 3.x; switch to a region (e.g. 'us-central1') for data residency / BAA
+// Model fallback chain (global endpoint). Primary first.
+const MODEL_NAMES = [
+  'gemini-3.5-flash',      // Primary
+  'gemini-3.1-flash-lite', // Fallback 1
+  'gemini-2.5-flash',      // Fallback 2 — temporary bridge until 2.5 retires
+];
+// ---------------------------------------------------------------------------
+
+// Initialize the GenAI client outside the handler for better performance
+const ai = new GoogleGenAI({ vertexai: true, project: GCP_PROJECT, location: GCP_LOCATION });
 
 functions.http('getAstridAnalysis', async (req, res) => {
   // Set CORS headers
@@ -31,49 +39,14 @@ functions.http('getAstridAnalysis', async (req, res) => {
       return res.status(400).send({ error: 'Missing required fields: virtueName and virtueDef are required' });
     }
 
-    // Model fallback strategy (refreshed Oct 2026 — dropped retired 1.5/pro models)
-    const modelNames = [
-      'gemini-2.5-flash-lite',  // Primary — current, cost-effective
-      'gemini-2.5-flash',       // Fallback 1 — more capable
-      'gemini-2.5-pro'          // Fallback 2 — available in-region (us-central1)
-    ];
-
     let analysisText = '';
     let lastError = null;
     let successfulModel = '';
 
     // Try each model until one works
-    for (const modelName of modelNames) {
+    for (const modelName of MODEL_NAMES) {
       try {
         console.log(`Trying model: ${modelName}`);
-        
-        const generativeModel = vertex_ai.getGenerativeModel({
-          model: modelName,
-          generationConfig: {
-            maxOutputTokens: 1024,
-            temperature: 0.6,
-            topP: 0.8,
-            topK: 40
-          },
-          safetySettings: [
-            {
-              category: 'HARM_CATEGORY_HATE_SPEECH',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-            },
-            {
-              category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-            },
-            {
-              category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-            },
-            {
-              category: 'HARM_CATEGORY_HARASSMENT',
-              threshold: 'BLOCK_MEDIUM_AND_ABOVE'
-            }
-          ]
-        });
 
         const scoreForPrompt = (typeof virtueScore === 'number' && !isNaN(virtueScore))
           ? virtueScore.toFixed(1)
@@ -96,13 +69,39 @@ functions.http('getAstridAnalysis', async (req, res) => {
           2.  Identify the most significant defect(s) contributing to the low score.
           3.  Conclude with a direct, actionable prompt for the user to reflect on for developing this virtue. Frame it as a question or a statement for consideration.
           4.  Keep the entire response under 150 words.`;
-;
 
-        const result = await generativeModel.generateContent(prompt);
-        const response = result.response;
-        
-        if (response.candidates && response.candidates[0] && response.candidates[0].content) {
-          analysisText = response.candidates[0].content.parts[0].text;
+        const result = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            maxOutputTokens: 1024,
+            temperature: 0.6,
+            topP: 0.8,
+            topK: 40,
+            safetySettings: [
+              {
+                category: 'HARM_CATEGORY_HATE_SPEECH',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+              },
+              {
+                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+              },
+              {
+                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+              },
+              {
+                category: 'HARM_CATEGORY_HARASSMENT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+              }
+            ]
+          }
+        });
+
+        const text = result.text ?? result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          analysisText = text;
           successfulModel = modelName;
           console.log(`Success with model: ${modelName}`);
           break;
